@@ -1,5 +1,6 @@
 package org.openmrs.module.sync2.api.sync;
 
+import org.openmrs.BaseOpenmrsData;
 import org.openmrs.module.fhir.api.client.ClientHttpEntity;
 import org.openmrs.module.fhir.api.client.ClientHttpRequestInterceptor;
 import org.openmrs.module.fhir.api.helper.ClientHelper;
@@ -11,6 +12,8 @@ import org.openmrs.module.sync2.api.model.enums.OpenMRSSyncInstance;
 import org.openmrs.module.sync2.api.utils.SyncUtils;
 import org.openmrs.module.sync2.client.ClientHelperFactory;
 import org.openmrs.module.sync2.client.RequestWrapperConverter;
+import org.openmrs.module.sync2.client.rest.RESTClientHelper;
+import org.openmrs.module.webservices.rest.SimpleObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -24,10 +27,12 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.openmrs.module.sync2.SyncConstants.ACTION_CREATED;
 import static org.openmrs.module.sync2.SyncConstants.ACTION_DELETED;
@@ -35,6 +40,7 @@ import static org.openmrs.module.sync2.SyncConstants.ACTION_RETIRED;
 import static org.openmrs.module.sync2.SyncConstants.ACTION_UPDATED;
 import static org.openmrs.module.sync2.SyncConstants.ACTION_VOIDED;
 import static org.openmrs.module.sync2.SyncConstants.SYNC2_REST_ENDPOINT;
+import static org.openmrs.module.sync2.SyncConstants.WS_REST_V1;
 import static org.openmrs.module.sync2.api.utils.SyncUtils.getLocalBaseUrl;
 import static org.openmrs.module.sync2.api.utils.SyncUtils.getParentBaseUrl;
 import static org.openmrs.module.sync2.api.utils.SyncUtils.getSyncConfigurationService;
@@ -141,7 +147,36 @@ public class SyncClient {
 			Object object,
 			String clientName, OpenMRSSyncInstance instance) throws RestClientException, URISyntaxException {
 		ClientHelper helper = ClientHelperFactory.createClient(clientName);
+		if(helper instanceof RESTClientHelper && object instanceof SimpleObject) {
+			// Analyse this to ensure no problems whatsoever an prevent it from being synchronized.
+			Field[] fields = category.getClazz().getFields();
+			SimpleObject toBeCreated = (SimpleObject) object;
+			for(Field field: fields) {
+				if(BaseOpenmrsData.class.isAssignableFrom(field.getType())) {
+					if(toBeCreated.containsKey(field.getName())) {
+						Object fieldValue = toBeCreated.get(field.getName());
+						String resourceUuid = null;
+						if(fieldValue instanceof String) {
+							// Assume it is a uuid.
+							resourceUuid = (String) fieldValue;
+						} else if(fieldValue instanceof Map) {
+							Map mapFieldValue = (Map) fieldValue;
+							if(mapFieldValue.containsKey("uuid")) {
+								resourceUuid = (String) mapFieldValue.get("uuid");
+							}
+						}
 
+						if(resourceUuid != null) {
+							String checkUrl = getDestinationUriForResourceAvailabilityCheck(instance, clientName, category, resourceUuid);
+							if(!isResourceAvailable(checkUrl, helper)) {
+								// Record this problem, stop
+								// TODO: Keep doing it until you uncover all issues.
+							}
+						}
+					}
+				}
+			}
+		}
 		ClientHttpEntity request = helper.createRequest(resourceUrl, object);
 		if (shouldWrappMessage(clientName, instance)) {
 			request = sendRequest(category, destinationUrl, clientName, new InnerRequest(request));
@@ -208,15 +243,32 @@ public class SyncClient {
 	}
 
 	private String getDestinationUri(OpenMRSSyncInstance instance, String clientName) {
-		String uri = "";
+		return getBaseDestinationUri(instance, clientName) + SYNC2_REST_ENDPOINT;
+	}
+
+	private String getDestinationUriForResourceAvailabilityCheck(OpenMRSSyncInstance instance, String clientName, SyncCategory category, String uuid) {
+		return new StringBuilder(getBaseDestinationUri(instance, clientName))
+			.append(WS_REST_V1)
+			.append(category.getClazz().getSimpleName().toLowerCase())
+			.append(uuid).toString();
+	}
+
+	private String getBaseDestinationUri(OpenMRSSyncInstance instance, String clientName) {
 		switch (instance) {
 			case PARENT:
-				uri = getParentBaseUrl(clientName);
-				break;
+				return getParentBaseUrl(clientName);
 			case CHILD:
-				uri = getLocalBaseUrl();
-				break;
+				return getLocalBaseUrl();
 		}
-		return uri + SYNC2_REST_ENDPOINT;
+		return "";
+	}
+
+	private boolean isResourceAvailable(String resourceUrl, ClientHelper helper) {
+		HttpHeaders headers = new HttpHeaders();
+		setRequestHeaders(helper, headers);
+		HttpEntity entity = new HttpEntity(null, headers);
+		ResponseEntity response = restTemplate.exchange(resourceUrl, HttpMethod.GET, entity, String.class);
+
+		return response.getStatusCode() == HttpStatus.OK;
 	}
 }

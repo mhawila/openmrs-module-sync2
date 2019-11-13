@@ -92,5 +92,7 @@ public class SyncConstants {
 
     public static final String SYNC_CATEGORY_HELPER = "sync2.categoryHelper";
 
+    public static final String WS_REST_V1 = "/ws/rest/v1/";
+
     private SyncConstants() {}
 }

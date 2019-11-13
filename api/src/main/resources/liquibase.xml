@@ -148,4 +148,28 @@
         </addColumn>
     </changeSet>
 
+    <changeSet id="sync2-2019-11-07-15:05:50" author="Willa aka C0d3r">
+        <preConditions>
+            <not>
+                <tableExists tableName="sync2_temporary_queue"/>
+            </not>
+        </preConditions>
+        <comment>
+            Adding the sync2_temporary_queue table which holds the events not being able to be processed at the time they are pulled from remote server.
+        </comment>
+        <createTable tableName="sync2_temporary_queue">
+            <column name="id" type="int" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="date_created" type="datetime"/>
+            <column name="class_name" type="varchar(255)"/>
+            <column name="category" type="varchar(255)"/>
+            <column name="status" type="varchar(20)"/>
+            <column name="pending_reason" type="varchar(255)"/>
+            <column name="instance" type="varchar(20)"/>
+            <column name="action" type="varchar(20)"/>
+            <column name="resource_url" type="varchar(255)"/>
+            <column name="object_json" type="text"/>
+        </createTable>
+    </changeSet>
 </databaseChangeLog>
