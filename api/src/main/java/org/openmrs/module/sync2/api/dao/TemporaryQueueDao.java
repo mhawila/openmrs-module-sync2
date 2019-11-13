@@ -9,9 +9,19 @@ import java.util.List;
  * @uthor Willa Mhawila<a.mhawila@gmail.com> on 11/7/19.
  */
 public interface TemporaryQueueDao {
-    TemporaryQueue saveTemporaryQueue(TemporaryQueue temporaryQueue);
+    TemporaryQueue save(TemporaryQueue temporaryQueue);
     TemporaryQueue deleteById(Long id);
     TemporaryQueue getById(Long id);
-    List<TemporaryQueue> getAll();
+
+    /**
+     * Returns a list of all TemporaryQueue items between startDate (inclusive) and endDate(exclusive)
+     * @param startDate
+     * @param endDate
+     * @param startIndex where to start counting (the first result)
+     * @param pageSize (Maximum number of records to return from the startIndex
+     * @return
+     */
     List<TemporaryQueue> getAll(Date startDate, Date endDate, Integer startIndex, Integer pageSize);
+
+    Long getCountOfAll(Date startDate, Date endDate);
 }

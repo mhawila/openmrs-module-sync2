@@ -15,7 +15,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 /**
  * This test class really should NOT be in this omod module, however some very messed configuration involving rest module makes running
@@ -28,8 +30,26 @@ public class TemporaryQueueDaoImplTest extends BaseModuleWebContextSensitiveTest
 
     @Test
     public void saveTemporaryQueueShouldWork() {
-        TemporaryQueue item = temporaryQueueDao.saveTemporaryQueue(createTemporaryQueue());
+        TemporaryQueue item = temporaryQueueDao.save(createTemporaryQueue());
         assertNotNull(item.getId());
+    }
+
+    @Test
+    public void getByIdShouldReturnEntityIfPresent() {
+        TemporaryQueue item = temporaryQueueDao.save(createTemporaryQueue());
+        Long id = item.getId();
+        item = null;
+        item = temporaryQueueDao.getById(id);
+        assertNotNull(item);
+        assertEquals(id, item.getId());
+    }
+
+    @Test
+    public void deleteByIdShouldDeleteValidId() {
+        TemporaryQueue item = temporaryQueueDao.save(createTemporaryQueue());
+        temporaryQueueDao.deleteById(item.getId());
+        TemporaryQueue again = temporaryQueueDao.getById(item.getId());
+        assertNull(again);
     }
 
     private TemporaryQueue createTemporaryQueue() {
