@@ -15,13 +15,14 @@ public interface TemporaryQueueDao {
 
     /**
      * Returns a list of all TemporaryQueue items between startDate (inclusive) and endDate(exclusive)
+     * @param status
      * @param startDate
      * @param endDate
      * @param startIndex where to start counting (the first result)
      * @param pageSize (Maximum number of records to return from the startIndex
      * @return
      */
-    List<TemporaryQueue> getAll(Date startDate, Date endDate, Integer startIndex, Integer pageSize);
+    List<TemporaryQueue> getAll(TemporaryQueue.Status status, Date startDate, Date endDate, Integer startIndex, Integer pageSize);
 
-    Long getCountOfAll(Date startDate, Date endDate);
+    Long getCountOfAll(TemporaryQueue.Status status, Date startDate, Date endDate);
 }

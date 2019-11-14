@@ -48,21 +48,25 @@ public class TemporaryQueueDaoImpl implements TemporaryQueueDao {
     }
 
     @Override
-    public List<TemporaryQueue> getAll(Date startDate, Date endDate, Integer startIndex, Integer pageSize) {
-        Criteria criteria = createCriteria(startDate, endDate, startIndex, pageSize);
+    public List<TemporaryQueue> getAll(TemporaryQueue.Status status, Date startDate, Date endDate, Integer startIndex, Integer pageSize) {
+        Criteria criteria = createCriteria(status, startDate, endDate, startIndex, pageSize);
         criteria.addOrder(Order.desc("dateCreated"));
         return criteria.list();
     }
 
     @Override
-    public Long getCountOfAll(Date startDate, Date endDate) {
-        Criteria criteria = createCriteria(startDate, endDate, null, null);
+    public Long getCountOfAll(TemporaryQueue.Status status, Date startDate, Date endDate) {
+        Criteria criteria = createCriteria(status, startDate, endDate, null, null);
         criteria.setProjection(Projections.rowCount());
         return (Long) criteria.uniqueResult();
     }
 
-    protected Criteria createCriteria(Date startDate, Date endDate, Integer startIndex, Integer pageSize) {
+    protected Criteria createCriteria(TemporaryQueue.Status status, Date startDate, Date endDate, Integer startIndex, Integer pageSize) {
         Criteria criteria = getSession().createCriteria(TemporaryQueue.class, "tq");
+
+        if(status != null) {
+            criteria.add(Restrictions.eq("status", status));
+        }
 
         if(startDate != null) {
             criteria.add(Restrictions.ge("dateCreated", startDate));

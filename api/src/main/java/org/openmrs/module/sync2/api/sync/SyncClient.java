@@ -1,5 +1,6 @@
 package org.openmrs.module.sync2.api.sync;
 
+import org.hl7.fhir.dstu3.model.codesystems.QuestionnaireUsageMode;
 import org.openmrs.BaseOpenmrsData;
 import org.openmrs.module.fhir.api.client.ClientHttpEntity;
 import org.openmrs.module.fhir.api.client.ClientHttpRequestInterceptor;
@@ -8,7 +9,9 @@ import org.openmrs.module.sync2.api.exceptions.SyncException;
 import org.openmrs.module.sync2.api.model.InnerRequest;
 import org.openmrs.module.sync2.api.model.RequestWrapper;
 import org.openmrs.module.sync2.api.model.SyncCategory;
+import org.openmrs.module.sync2.api.model.TemporaryQueue;
 import org.openmrs.module.sync2.api.model.enums.OpenMRSSyncInstance;
+import org.openmrs.module.sync2.api.service.TemporaryQueueService;
 import org.openmrs.module.sync2.api.utils.SyncUtils;
 import org.openmrs.module.sync2.client.ClientHelperFactory;
 import org.openmrs.module.sync2.client.RequestWrapperConverter;
@@ -16,12 +19,16 @@ import org.openmrs.module.sync2.client.rest.RESTClientHelper;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClientException;
@@ -31,6 +38,7 @@ import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -81,7 +89,7 @@ public class SyncClient {
 	}
 
 	public ResponseEntity<String> pushData(SyncCategory category, Object object, String clientName,
-			String resourceUrl, String action, OpenMRSSyncInstance instance) {
+			String resourceUrl, String action, OpenMRSSyncInstance instance) throws TemporaryDataIntegrityException {
 		ResponseEntity<String> result = null;
 		setUpCredentials(clientName, instance);
 		String destinationUrl = getDestinationUri(instance, clientName);
@@ -145,7 +153,7 @@ public class SyncClient {
 
 	private ResponseEntity<String> createObject(SyncCategory category, String resourceUrl, String destinationUrl,
 			Object object,
-			String clientName, OpenMRSSyncInstance instance) throws RestClientException, URISyntaxException {
+			String clientName, OpenMRSSyncInstance instance) throws RestClientException, URISyntaxException, TemporaryDataIntegrityException {
 		ClientHelper helper = ClientHelperFactory.createClient(clientName);
 		if(helper instanceof RESTClientHelper && object instanceof SimpleObject) {
 			// Analyse this to ensure no problems whatsoever an prevent it from being synchronized.
@@ -171,6 +179,16 @@ public class SyncClient {
 							if(!isResourceAvailable(checkUrl, helper)) {
 								// Record this problem, stop
 								// TODO: Keep doing it until you uncover all issues.
+								TemporaryQueue queueItem = new TemporaryQueue();
+								queueItem.setInstance(instance);
+								queueItem.setObject(toBeCreated);
+								queueItem.setPendingReason(category.getCategory() + " resource  with uuid " + resourceUuid + " is not yet created");
+								queueItem.setStatus(TemporaryQueue.Status.PENDING);
+								queueItem.setDateCreated(new Date());
+								queueItem.setAction(ACTION_CREATED);
+								queueItem.setSyncCategory(category);
+								queueItem.setResourceUrl(resourceUrl);
+								throw new TemporaryDataIntegrityException(queueItem);
 							}
 						}
 					}

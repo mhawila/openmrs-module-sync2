@@ -10,7 +10,9 @@ import org.openmrs.module.sync2.api.model.enums.SyncOperation;
 import org.openmrs.module.sync2.api.service.ParentObjectHashcodeService;
 import org.openmrs.module.sync2.api.service.SyncAuditService;
 import org.openmrs.module.sync2.api.service.SyncPullService;
+import org.openmrs.module.sync2.api.service.TemporaryQueueService;
 import org.openmrs.module.sync2.api.service.UnifyService;
+import org.openmrs.module.sync2.api.sync.TemporaryDataIntegrityException;
 import org.openmrs.module.sync2.api.utils.ContextUtils;
 import org.openmrs.module.sync2.api.utils.SyncHashcodeUtils;
 import org.openmrs.module.sync2.api.utils.SyncUtils;
@@ -45,6 +47,9 @@ public class SyncPullServiceImpl extends AbstractSynchronizationService implemen
 
     @Autowired
     private UnifyService unifyService;
+
+    @Autowired
+    private TemporaryQueueService temporaryQueueService;
 
     private static final String FAILED_SYNC_MESSAGE = "Problem with pulling from parent";
 
@@ -83,7 +88,11 @@ public class SyncPullServiceImpl extends AbstractSynchronizationService implemen
 
             auditMessage = successfulMessage(auditMessage);
         } catch (Error | Exception e) {
-            if (SyncUtils.isAuditMessageCategory(category) && SyncUtils.isUnauthorizedException(e)) {
+            if(e instanceof TemporaryDataIntegrityException) {
+                TemporaryDataIntegrityException te = (TemporaryDataIntegrityException) e;
+                temporaryQueueService.saveTemporaryQueueList(te.getTemporaryQueueList());
+                shouldSynchronize = false;
+            } else if (SyncUtils.isAuditMessageCategory(category) && SyncUtils.isUnauthorizedException(e)) {
                 shouldSynchronize = false;
             } else {
                 auditMessage = failedMessage(auditMessage, e);
