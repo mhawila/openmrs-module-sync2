@@ -1,6 +1,5 @@
 package org.openmrs.module.sync2.api.sync;
 
-import org.hl7.fhir.dstu3.model.codesystems.QuestionnaireUsageMode;
 import org.openmrs.BaseOpenmrsData;
 import org.openmrs.module.fhir.api.client.ClientHttpEntity;
 import org.openmrs.module.fhir.api.client.ClientHttpRequestInterceptor;
@@ -11,7 +10,6 @@ import org.openmrs.module.sync2.api.model.RequestWrapper;
 import org.openmrs.module.sync2.api.model.SyncCategory;
 import org.openmrs.module.sync2.api.model.TemporaryQueue;
 import org.openmrs.module.sync2.api.model.enums.OpenMRSSyncInstance;
-import org.openmrs.module.sync2.api.service.TemporaryQueueService;
 import org.openmrs.module.sync2.api.utils.SyncUtils;
 import org.openmrs.module.sync2.client.ClientHelperFactory;
 import org.openmrs.module.sync2.client.RequestWrapperConverter;
@@ -19,16 +17,12 @@ import org.openmrs.module.sync2.client.rest.RESTClientHelper;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Scope;
-import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClientException;
@@ -182,12 +176,11 @@ public class SyncClient {
 								TemporaryQueue queueItem = new TemporaryQueue();
 								queueItem.setInstance(instance);
 								queueItem.setObject(toBeCreated);
-								queueItem.setPendingReason(category.getCategory() + " resource  with uuid " + resourceUuid + " is not yet created");
+								queueItem.setReason(category.getCategory() + " resource  with uuid " + resourceUuid + " is not yet created");
 								queueItem.setStatus(TemporaryQueue.Status.PENDING);
 								queueItem.setDateCreated(new Date());
 								queueItem.setAction(ACTION_CREATED);
 								queueItem.setSyncCategory(category);
-								queueItem.setResourceUrl(resourceUrl);
 								throw new TemporaryDataIntegrityException(queueItem);
 							}
 						}

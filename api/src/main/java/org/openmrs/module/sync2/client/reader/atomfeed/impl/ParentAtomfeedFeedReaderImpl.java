@@ -47,6 +47,7 @@ public class ParentAtomfeedFeedReaderImpl extends AbstractAtomfeedFeedReader imp
 
 			for(TemporaryQueue queueItem: pendingItems) {
 				// Attempt again.
+				syncPullService.retrySynchingPendingObjectFromParent(queueItem);
 			}
 		}
 	}

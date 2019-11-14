@@ -58,7 +58,7 @@ public class TemporaryQueueDaoImplTest extends BaseModuleWebContextSensitiveTest
         tq.setSyncCategory(sc);
         tq.setAction("create");
         tq.setStatus(TemporaryQueue.Status.PENDING);
-        tq.setPendingReason("Did not sync because parent encounter object with uuid test-uuid does not exist");
+        tq.setReason("Did not sync because parent encounter object with uuid test-uuid does not exist");
         tq.setDateCreated(new Date());
         tq.setInstance(OpenMRSSyncInstance.CHILD);
         tq.setObject(createSimpleObject());

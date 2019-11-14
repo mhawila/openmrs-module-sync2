@@ -165,11 +165,12 @@
             <column name="class_name" type="varchar(255)"/>
             <column name="category" type="varchar(255)"/>
             <column name="status" type="varchar(20)"/>
-            <column name="pending_reason" type="varchar(255)"/>
+            <column name="reason" type="varchar(255)"/>
             <column name="instance" type="varchar(20)"/>
             <column name="action" type="varchar(20)"/>
-            <column name="resource_url" type="varchar(255)"/>
+            <column name="resource_links" type="varchar(255)"/>
             <column name="object_json" type="text"/>
+            <column name="uuid" type="varchar(100)"/>
         </createTable>
     </changeSet>
 </databaseChangeLog>

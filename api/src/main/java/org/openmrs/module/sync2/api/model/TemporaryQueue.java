@@ -2,6 +2,7 @@ package org.openmrs.module.sync2.api.model;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.openmrs.module.sync2.api.model.enums.OpenMRSSyncInstance;
 import org.openmrs.module.webservices.rest.SimpleObject;
 
@@ -17,8 +18,10 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 import javax.persistence.Transient;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.Date;
+import java.util.Map;
 
 /**
  * @uthor Willa Mhawila<a.mhawila@gmail.com> on 11/7/19.
@@ -28,20 +31,23 @@ import java.util.Date;
 @Access(AccessType.PROPERTY)
 public class TemporaryQueue implements Serializable {
     public enum Status {
-        COMPLETED, PENDING
+        COMPLETED, PENDING, RETRIED_FAILED
     }
 
     private Long id;
     private Date dateCreated;
     private SyncCategory syncCategory;
     private SimpleObject object;
-    private String resourceUrl;
+    private Map<String, String> resourceLinksMap;
+    private String client;
     private String action;
     private OpenMRSSyncInstance instance;
     private Status status;
-    private String pendingReason;
+    private String reason;
+    private String uuid;
 
     private static SimpleObjectConverter CONVERTER = new SimpleObjectConverter();
+    private static ObjectMapper mapper = new ObjectMapper();
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -89,13 +95,39 @@ public class TemporaryQueue implements Serializable {
         this.setObject(CONVERTER.convertToEntityAttribute(objectJson));
     }
 
-    @Column(name = "resource_url")
-    public String getResourceUrl() {
-        return resourceUrl;
+    @Transient
+    public Map<String, String> getResourceLinksMap() {
+        return resourceLinksMap;
     }
 
-    public void setResourceUrl(String resourceUrl) {
-        this.resourceUrl = resourceUrl;
+    public void setResourceLinksMap(Map<String, String> resourceLinks) {
+        this.resourceLinksMap = resourceLinks;
+    }
+
+    @Column(name = "resource_links")
+    public String getResourceLinks() {
+        try {
+            return mapper.writeValueAsString(getResourceLinksMap());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void setResourceLinks(String resourceLinks) {
+        try {
+            Map<String, String> linksMap = mapper.readValue(resourceLinks, Map.class);
+            setResourceLinksMap(linksMap);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public String getClient() {
+        return client;
+    }
+
+    public void setClient(String client) {
+        this.client = client;
     }
 
     public String getAction() {
@@ -125,12 +157,20 @@ public class TemporaryQueue implements Serializable {
     }
 
     @Column(name = "pending_reason")
-    public String getPendingReason() {
-        return pendingReason;
+    public String getReason() {
+        return reason;
     }
 
-    public void setPendingReason(String pendingReason) {
-        this.pendingReason = pendingReason;
+    public void setReason(String reason) {
+        this.reason = reason;
+    }
+
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
     }
 
     @Override

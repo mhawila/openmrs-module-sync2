@@ -1,10 +1,12 @@
 package org.openmrs.module.sync2.api.service.impl;
 
 import org.openmrs.module.sync2.SyncConstants;
+import org.openmrs.module.sync2.api.exceptions.MergeConflictException;
 import org.openmrs.module.sync2.api.exceptions.SyncException;
 import org.openmrs.module.sync2.api.filter.impl.PullFilterService;
 import org.openmrs.module.sync2.api.model.SyncCategory;
 import org.openmrs.module.sync2.api.model.SyncObject;
+import org.openmrs.module.sync2.api.model.TemporaryQueue;
 import org.openmrs.module.sync2.api.model.audit.AuditMessage;
 import org.openmrs.module.sync2.api.model.enums.SyncOperation;
 import org.openmrs.module.sync2.api.service.ParentObjectHashcodeService;
@@ -22,6 +24,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javax.transaction.NotSupportedException;
+import javax.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Map;
 
@@ -75,24 +79,70 @@ public class SyncPullServiceImpl extends AbstractSynchronizationService implemen
                 && shouldSynchronize(pulledObject.getSimpleObject(), localPulledObject.getSimpleObject(), action);
 
             if (shouldSynchronize) {
-                String hashCode = null;
-                if (!SyncUtils.isDeleteAction(action)) {
-                    pulledObject.setBaseObject(detectAndResolveConflict(
-                            pulledObject, localPulledObject, auditMessage).getBaseObject());
-                    hashCode = SyncHashcodeUtils.getHashcode(
-                            unifyService.unifyObject(pulledObject.getBaseObject(), category, clientName));
-                }
-                syncClient.pushData(category, pulledObject.getBaseObject(), clientName, localPush, action, CHILD);
-                parentObjectHashcodeService.save(uuid, hashCode);
+                mergeThenSynchronize(pulledObject, localPulledObject, auditMessage, category, action, clientName, localPush, uuid);
             }
 
             auditMessage = successfulMessage(auditMessage);
         } catch (Error | Exception e) {
             if(e instanceof TemporaryDataIntegrityException) {
                 TemporaryDataIntegrityException te = (TemporaryDataIntegrityException) e;
+                TemporaryQueue tq = te.getTemporaryQueueList().get(0);
+                tq.setResourceLinksMap(resourceLinks);
+                tq.setClient(clientName);
+                tq.setUuid(uuid);
                 temporaryQueueService.saveTemporaryQueueList(te.getTemporaryQueueList());
                 shouldSynchronize = false;
             } else if (SyncUtils.isAuditMessageCategory(category) && SyncUtils.isUnauthorizedException(e)) {
+                shouldSynchronize = false;
+            } else {
+                auditMessage = failedMessage(auditMessage, e);
+            }
+        } finally {
+            if (shouldSynchronize) {
+                auditMessage = syncAuditService.saveAuditMessageDuringSync(auditMessage);
+            }
+        }
+        return auditMessage;
+    }
+
+    @Override
+    public AuditMessage retrySynchingPendingObjectFromParent(@NotNull final TemporaryQueue temporaryQueue) {
+        final SyncCategory category = temporaryQueue.getSyncCategory();
+        final String clientName = temporaryQueue.getClient();
+        final String uuid = temporaryQueue.getUuid();
+        final String action = temporaryQueue.getAction();
+        final Map<String, String> resourceLinks = temporaryQueue.getResourceLinksMap();
+        SyncObject pulledObject = new SyncObject(temporaryQueue.getObject());
+        AuditMessage auditMessage = initSynchronization(category, resourceLinks, action, clientName);
+        boolean shouldSynchronize = true;
+
+        try {
+            String localPull = getPullUrl(temporaryQueue.getResourceLinksMap(), temporaryQueue.getClient(), CHILD);
+            String localPush = getPushUrl(temporaryQueue.getResourceLinksMap(), temporaryQueue.getClient(), CHILD);
+
+            SyncObject localPulledObject = new SyncObject(syncClient.pullData(category, clientName, localPull, CHILD));
+            localPulledObject.setSimpleObject(unifyService.unifyObject(localPulledObject.getBaseObject(), category, clientName));
+
+            shouldSynchronize = temporaryQueue.getObject() != null
+                    && shouldSynchronize(temporaryQueue.getObject(), localPulledObject.getSimpleObject(), action);
+
+            if (shouldSynchronize) {
+                mergeThenSynchronize(pulledObject, localPulledObject, auditMessage, category, action, clientName, localPush, uuid);
+            }
+
+            temporaryQueueService.deleteTemporaryQueue(temporaryQueue);
+            auditMessage = successfulMessage(auditMessage);
+        } catch (Error | Exception e) {
+            if(e instanceof TemporaryDataIntegrityException) {
+                TemporaryDataIntegrityException te = (TemporaryDataIntegrityException) e;
+                TemporaryQueue tq = te.getTemporaryQueueList().get(0);
+                temporaryQueue.setReason(tq.getReason());
+                temporaryQueue.setStatus(TemporaryQueue.Status.RETRIED_FAILED);
+
+                temporaryQueueService.saveTemporaryQueue(temporaryQueue);
+            }
+
+            if (SyncUtils.isAuditMessageCategory(category) && SyncUtils.isUnauthorizedException(e)) {
                 shouldSynchronize = false;
             } else {
                 auditMessage = failedMessage(auditMessage, e);
@@ -157,5 +207,19 @@ public class SyncPullServiceImpl extends AbstractSynchronizationService implemen
 
     private Object getPulledObject(SyncCategory category, String action, String clientName, String uuid, String parentPull) {
         return pullData(category, action, clientName, uuid, parentPull, PARENT);
+    }
+
+    private void mergeThenSynchronize(SyncObject pulledObject, SyncObject localPulledObject, AuditMessage auditMessage, SyncCategory category,
+                                      String action, String clientName, String localPush, String uuid) throws MergeConflictException,
+            NotSupportedException, TemporaryDataIntegrityException {
+        String hashCode = null;
+        if (!SyncUtils.isDeleteAction(action)) {
+            pulledObject.setBaseObject(detectAndResolveConflict(
+                    pulledObject, localPulledObject, auditMessage).getBaseObject());
+            hashCode = SyncHashcodeUtils.getHashcode(
+                    unifyService.unifyObject(pulledObject.getBaseObject(), category, clientName));
+        }
+        syncClient.pushData(category, pulledObject.getBaseObject(), clientName, localPush, action, CHILD);
+        parentObjectHashcodeService.save(uuid, hashCode);
     }
 }
