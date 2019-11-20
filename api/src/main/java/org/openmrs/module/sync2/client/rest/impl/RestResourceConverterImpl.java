@@ -174,14 +174,14 @@ public class RestResourceConverterImpl implements RestResourceConverter {
 		simpleObject.remove("concept");
 		simpleObject.put("concept", concept.get("uuid"));
 
-		final String encounterKey = "encounter";
-		if(simpleObject.containsKey(encounterKey)) {
-			Object encounter =  simpleObject.get(encounterKey);
+		final String ENCOUNTER_KEY = "encounter";
+		if(simpleObject.containsKey(ENCOUNTER_KEY)) {
+			Object encounter =  simpleObject.get(ENCOUNTER_KEY);
 			if(encounter instanceof Map) {
 				// Otherwise assume it is already a uuid string (not a stretch and I can't do anything anyway. - secret weapon here -->.<--
 				Map<String, Object> encounterMap = (Map<String, Object>) encounter;
-				simpleObject.remove(encounterKey);
-				simpleObject.put("encounter", encounterMap.get("uuid"));
+				simpleObject.remove(ENCOUNTER_KEY);
+				simpleObject.put(ENCOUNTER_KEY, encounterMap.get("uuid"));
 			}
 		}
 	}

@@ -79,20 +79,19 @@ public class RestResourceConverterTest extends BaseModuleWebContextSensitiveTest
 	}
 
 	@Test
-	public void convertObjectShouldConvertEncounter() {
+	public void convertObjectShouldConvertEncounterToSuitableRepresentationForRestPost() {
 		SimpleObject encounter = new SimpleObject();
-		final String encounterUuid = "some-encounter-uuid-who-gives-a-damn?";
-		encounter.add("uuid", encounterUuid);
+		final String ENCOUNTER_UUID = "some-encounter-uuid-who-gives-a-damn?";
+		encounter.add("uuid", ENCOUNTER_UUID);
 		SimpleObject obs = createObsSimpleObject();
 		obs.add("encounter", encounter);
 
 		converter.convertObject(WS_REST_V1 + "obs", obs);
-
-		assertEquals(encounterUuid, obs.get("encounter"));
+		assertEquals(ENCOUNTER_UUID, obs.get("encounter"));
 	}
 
 	@Test
-	public void convertObjectShouldIgnoreIfEncounterNotIncluded() {
+	public void convertObjectShouldNotAddEncounterIfNotIncludedYet() {
 		SimpleObject obs = createObsSimpleObject();
 		converter.convertObject(WS_REST_V1 + "obs", obs);
 		assertFalse(obs.containsKey("encounter"));
