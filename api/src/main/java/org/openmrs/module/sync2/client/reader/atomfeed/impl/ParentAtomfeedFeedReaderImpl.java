@@ -40,14 +40,14 @@ public class ParentAtomfeedFeedReaderImpl extends AbstractAtomfeedFeedReader imp
 		Date startDate = new Date();
 		readAndProcessAllFeeds();
 
-		long countOfPendingEvents = temporaryQueueService.getCountOfAllTemporaryQueue(startDate, TemporaryQueue.Status.PENDING);
-		if(countOfPendingEvents > 0) {
+		Long countOfPendingEvents = temporaryQueueService.getCountOfAllTemporaryQueue(startDate, TemporaryQueue.Status.PENDING);
+		if(countOfPendingEvents != null && countOfPendingEvents > 0) {
 			// Let us deal with pending stuff.
 			List<TemporaryQueue> pendingItems = temporaryQueueService.getAllTemporaryQueue(startDate, TemporaryQueue.Status.PENDING);
 
 			for(TemporaryQueue queueItem: pendingItems) {
 				// Attempt again.
-				syncPullService.retrySynchingPendingObjectFromParent(queueItem);
+				syncPullService.retrySynchronizingPendingObjectFromParent(queueItem);
 			}
 		}
 	}

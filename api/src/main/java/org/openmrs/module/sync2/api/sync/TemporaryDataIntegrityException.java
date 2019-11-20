@@ -11,11 +11,12 @@ import java.util.List;
 public class TemporaryDataIntegrityException extends Exception {
     private List<TemporaryQueue> temporaryQueueList = new LinkedList<>();
     public TemporaryDataIntegrityException(TemporaryQueue temporaryQueue) {
-        super("expected records missin in target");
+        super("expected records missing in target");
         temporaryQueueList.add(temporaryQueue);
     }
 
     public TemporaryDataIntegrityException(List<TemporaryQueue> temporaryQueueList) {
+        super("expected records missing in target");
         this.temporaryQueueList = temporaryQueueList;
     }
 

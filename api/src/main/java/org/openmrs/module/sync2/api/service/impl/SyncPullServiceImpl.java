@@ -90,7 +90,7 @@ public class SyncPullServiceImpl extends AbstractSynchronizationService implemen
                 tq.setResourceLinksMap(resourceLinks);
                 tq.setClient(clientName);
                 tq.setUuid(uuid);
-                temporaryQueueService.saveTemporaryQueueList(te.getTemporaryQueueList());
+                temporaryQueueService.saveTemporaryQueue(tq);
                 shouldSynchronize = false;
             } else if (SyncUtils.isAuditMessageCategory(category) && SyncUtils.isUnauthorizedException(e)) {
                 shouldSynchronize = false;
@@ -106,7 +106,7 @@ public class SyncPullServiceImpl extends AbstractSynchronizationService implemen
     }
 
     @Override
-    public AuditMessage retrySynchingPendingObjectFromParent(@NotNull final TemporaryQueue temporaryQueue) {
+    public AuditMessage retrySynchronizingPendingObjectFromParent(@NotNull final TemporaryQueue temporaryQueue) {
         final SyncCategory category = temporaryQueue.getSyncCategory();
         final String clientName = temporaryQueue.getClient();
         final String uuid = temporaryQueue.getUuid();

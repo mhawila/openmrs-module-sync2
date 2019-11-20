@@ -16,7 +16,7 @@ public interface SyncPullService {
     AuditMessage pullAndSaveObjectFromParent(SyncCategory category, Map<String, String> resourceLinks,
             String action, String clientName, String uuid);
 
-    AuditMessage retrySynchingPendingObjectFromParent(TemporaryQueue temporaryQueue);
+    AuditMessage retrySynchronizingPendingObjectFromParent(TemporaryQueue temporaryQueue);
 
     List<AuditMessage> pullAndSaveObjectFromParent(SyncCategory category, String uuid);
 
