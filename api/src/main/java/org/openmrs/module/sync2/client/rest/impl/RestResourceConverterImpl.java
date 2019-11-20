@@ -187,7 +187,7 @@ public class RestResourceConverterImpl implements RestResourceConverter {
 	}
 
 	private void convertVisit(Map<String, Object> simpleObject) {
-		simpleObject.remove("preferredName");
+		simpleObject.remove("encounters");
 	}
 
 	private void convertForm(SimpleObject simpleObject) {

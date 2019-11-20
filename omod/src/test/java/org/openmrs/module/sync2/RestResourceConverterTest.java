@@ -98,6 +98,13 @@ public class RestResourceConverterTest extends BaseModuleWebContextSensitiveTest
 		assertFalse(obs.containsKey("encounter"));
 	}
 
+	@Test
+	public void convertObjectShouldRemoveEncountersFromVisit() {
+		SimpleObject visit = new SimpleObject().add("uuid", "some-visit-uuid").add("encounters", new ArrayList<SimpleObject>());
+		converter.convertObject(WS_REST_V1 + "visit", visit);
+		assertFalse(visit.containsKey("encounters"));
+	}
+
 	private SimpleObject createObsSimpleObject() {
 		SimpleObject obs = new SimpleObject();
 		SimpleObject concept = new SimpleObject();
